@@ -234,7 +234,7 @@ Public Class Form1
             ' Evaluate the math expression
             Try
                 Dim result As String = EvaluateMathExpression(expression)
-                results.Add($"{expression} = {result}")
+                results.Add($"{result}")
             Catch ex As Exception
                 results.Add($"Error evaluating expression '{expression}': {ex.Message}")
             End Try
