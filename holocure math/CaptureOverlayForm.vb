@@ -1,5 +1,16 @@
-﻿Public Class CaptureOverlayForm
+﻿Imports System.Runtime.InteropServices
+
+Public Class CaptureOverlayForm
     Inherits Form
+
+    ' Import necessary function to change window style
+    <DllImport("user32.dll")>
+    Private Shared Function SetWindowLong(hWnd As IntPtr, nIndex As Integer, dwNewLong As Integer) As Integer
+    End Function
+
+    <DllImport("user32.dll", SetLastError:=True)>
+    Private Shared Function GetWindowLong(hWnd As IntPtr, nIndex As Integer) As Integer
+    End Function
 
     Private captureRect As Rectangle
     Private dragStart As Point
@@ -8,18 +19,23 @@
     Friend WithEvents TextBox1 As TextBox
     Private resizeStep As Integer = 10
 
+    ' Constants for window styles
+    Private Const GWL_EXSTYLE As Integer = -20
+    Private Const WS_EX_LAYERED As Integer = &H80000
+    Private Const WS_EX_TRANSPARENT As Integer = &H20
+
     Public Sub New()
         ' Set up the form as a transparent overlay
         Me.FormBorderStyle = FormBorderStyle.None
-        Me.BackColor = Color.LimeGreen ' Pick a color that won't conflict with the background
-        Me.TransparencyKey = Color.LimeGreen ' Make this color transparent
+        Me.BackColor = Color.DarkViolet
+        Me.TransparencyKey = Color.DarkViolet ' Make this color transparent
         Me.Opacity = 0.5 ' Make the form semi-transparent
         Me.TopMost = True ' Ensure the form is always on top
         Me.ShowInTaskbar = False
         Me.Bounds = Screen.PrimaryScreen.Bounds ' Start as full screen
 
         ' Initialize the rectangle (set an initial size and location)
-        captureRect = New Rectangle(800, 280, 200, 60) ' Initial area to capture
+        captureRect = New Rectangle(800, 280, 700, 40) ' Initial area to capture
 
         ' Hook up the mouse events
         AddHandler Me.MouseDown, AddressOf OverlayForm_MouseDown
@@ -29,6 +45,17 @@
         ' Handle KeyDown for arrow key movement and resizing
         Me.KeyPreview = True
         AddHandler Me.KeyDown, AddressOf OverlayForm_KeyDown
+    End Sub
+
+    Protected Overrides Sub OnLoad(e As EventArgs)
+        MyBase.OnLoad(e)
+
+        ' Set the form to be TopMost (always on top)
+        Me.TopMost = True
+
+        ' Set the form to be click-through
+        Dim exStyle As Integer = GetWindowLong(Me.Handle, GWL_EXSTYLE)
+        SetWindowLong(Me.Handle, GWL_EXSTYLE, exStyle Or WS_EX_LAYERED Or WS_EX_TRANSPARENT)
     End Sub
 
     ' Mouse events (same as before)
@@ -94,25 +121,4 @@
 
         Return screenCapture
     End Function
-
-    Private Sub InitializeComponent()
-        Me.TextBox1 = New System.Windows.Forms.TextBox()
-        Me.SuspendLayout()
-        '
-        'TextBox1
-        '
-        Me.TextBox1.Location = New System.Drawing.Point(139, 26)
-        Me.TextBox1.Name = "TextBox1"
-        Me.TextBox1.Size = New System.Drawing.Size(100, 23)
-        Me.TextBox1.TabIndex = 0
-        '
-        'CaptureOverlayForm
-        '
-        Me.ClientSize = New System.Drawing.Size(284, 261)
-        Me.Controls.Add(Me.TextBox1)
-        Me.Name = "CaptureOverlayForm"
-        Me.ResumeLayout(False)
-        Me.PerformLayout()
-
-    End Sub
 End Class

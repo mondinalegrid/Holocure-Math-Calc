@@ -11,6 +11,8 @@ Public Class Form1
 
     Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         TextBox1.ScrollBars = ScrollBars.Vertical
+        TextBox1.ReadOnly = True
+        MaximizeBox = False
     End Sub
 
     Private Sub Button1_Click(sender As Object, e As EventArgs) Handles Button1.Click
@@ -265,5 +267,49 @@ Public Class Form1
                         "Evaluated Results: " & evaluatedResults
         TextBox1.SelectionStart = TextBox1.Text.Length
         TextBox1.ScrollToCaret()
+    End Sub
+
+    Private Sub Button4_Click(sender As Object, e As EventArgs) Handles Button4.Click
+        Dim pathToFile As String = Application.StartupPath & "templates\test data\"
+        TestExtract(New Bitmap(pathToFile & "44 2.png"), "44 2", "((1 + 0) * (3 + 0)) * (55 - 44)")
+        TestExtract(New Bitmap(pathToFile & "44.png"), "44", "(3 * 44) / (2 + 10)")
+        TestExtract(New Bitmap(pathToFile & "33.png"), "33", "(6 + 33) / (96 - 93)")
+        TestExtract(New Bitmap(pathToFile & "77.png"), "77", "((52 - 47) * (3 + 0)) + (23 + 77)")
+        TestExtract(New Bitmap(pathToFile & "88.png"), "88", "((65 + 12) * (88 - 87)) + (35 + 0)")
+        TestExtract(New Bitmap(pathToFile & "00.png"), "00", "((100 - 69) * (27 - 26)) + (1 * 73)")
+    End Sub
+
+    Private Sub TestExtract(img As Bitmap, filename As String, expected As String)
+        Dim extractedText = TemplateMatching(img).Replace("-2", "2").Replace("=", "").Replace("?", "").Trim
+        Dim evaluatedResults As String = ProcessMathExpressions(extractedText)
+
+        Dim match = False
+        If expected.Trim = extractedText.Trim Then
+            match = True
+        End If
+
+        TextBox1.Text = TextBox1.Text & Environment.NewLine &
+                        filename & Environment.NewLine &
+                        "Expected: " & expected & Environment.NewLine &
+                        "Extracted Expression: " & extractedText & Environment.NewLine &
+                        "Match: " & match & Environment.NewLine &
+                        "===================="
+        TextBox1.SelectionStart = TextBox1.Text.Length
+        TextBox1.ScrollToCaret()
+    End Sub
+
+    Private Sub ExitToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles ExitToolStripMenuItem.Click
+        Me.Close()
+    End Sub
+
+    Private Sub HelpToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles HelpToolStripMenuItem.Click
+        MessageBox.Show("Press overlay button to move or resize the overlay" & Environment.NewLine &
+                        "arrow keys to move" & Environment.NewLine &
+                        "+ and - for height" & Environment.NewLine &
+                        "[ and ] for width" & Environment.NewLine &
+                        "Press capture to extract and calculate" & Environment.NewLine & Environment.NewLine &
+                        "Calc for incase the extracted expression is incorrect" & Environment.NewLine &
+                        "You can manually input the expression in the textbox besides it" & Environment.NewLine,
+                        "Help", MessageBoxButtons.OK, MessageBoxIcon.Information)
     End Sub
 End Class
