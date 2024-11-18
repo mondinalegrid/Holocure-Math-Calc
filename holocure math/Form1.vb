@@ -314,6 +314,7 @@ Public Class Form1
                               End If
                           Else
                               isRunning = False
+                              Button2.Text = "Capture"
                               MessageBox.Show("Holocure is minimized or closed")
                           End If
                       End Sub)
