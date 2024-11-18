@@ -3,7 +3,6 @@ Imports Emgu.CV.CvEnum
 Imports Emgu.CV.BitmapExtension
 Imports Emgu.CV.Structure
 Imports System.Runtime.InteropServices
-Imports System.Drawing.Imaging
 
 Public Class Form1
 
@@ -310,6 +309,7 @@ Public Class Form1
                               TextBox1.ScrollToCaret()
 
                               If prevExtract <> extractedText Then
+                                  prevExtract = extractedText
                                   TextBox2.Text = extractedText
                               End If
                           Else
