@@ -13,6 +13,7 @@ Public Class Form1
         TextBox1.ScrollBars = ScrollBars.Vertical
         TextBox1.ReadOnly = True
         MaximizeBox = False
+        FormBorderStyle = FormBorderStyle.FixedDialog
     End Sub
 
     Private Sub Button1_Click(sender As Object, e As EventArgs) Handles Button1.Click
@@ -38,6 +39,8 @@ Public Class Form1
             TextBox1.ScrollToCaret()
 
             TextBox2.Text = extractedText
+        Else
+            MessageBox.Show("Click on Overlay")
         End If
     End Sub
 
@@ -305,8 +308,8 @@ Public Class Form1
     Private Sub HelpToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles HelpToolStripMenuItem.Click
         MessageBox.Show("Press overlay button to move or resize the overlay" & Environment.NewLine &
                         "arrow keys to move" & Environment.NewLine &
-                        "+ and - for height" & Environment.NewLine &
-                        "[ and ] for width" & Environment.NewLine &
+                        "+ and - to adjust height" & Environment.NewLine &
+                        "[ and ] to adjust width" & Environment.NewLine &
                         "Press capture to extract and calculate" & Environment.NewLine & Environment.NewLine &
                         "Calc for incase the extracted expression is incorrect" & Environment.NewLine &
                         "You can manually input the expression in the textbox besides it" & Environment.NewLine,
