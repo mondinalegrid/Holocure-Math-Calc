@@ -2,48 +2,59 @@
 Imports Emgu.CV.CvEnum
 Imports Emgu.CV.BitmapExtension
 Imports Emgu.CV.Structure
+Imports System.Runtime.InteropServices
+Imports System.Drawing.Imaging
 
 Public Class Form1
 
-    Private overlayForm As CaptureOverlayForm
+#Region "Variables"
     Private image As Mat
     Private templates As New Dictionary(Of String, Mat)
+    Private windowRegions As RECT
+    Private windowHandle As IntPtr
+    Private isRunning As Boolean = False
+    Private loopThread As System.Threading.Thread
+#End Region
 
+#Region "Form Events"
     Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         TextBox1.ScrollBars = ScrollBars.Vertical
         TextBox1.ReadOnly = True
         MaximizeBox = False
         FormBorderStyle = FormBorderStyle.FixedDialog
-    End Sub
-
-    Private Sub Button1_Click(sender As Object, e As EventArgs) Handles Button1.Click
-        If overlayForm Is Nothing OrElse overlayForm.IsDisposed Then
-            overlayForm = New CaptureOverlayForm()
-            overlayForm.Show()
-        Else
-            overlayForm.BringToFront()
-        End If
+        Button2.Text = "Capture"
     End Sub
 
     Private Sub Button2_Click(sender As Object, e As EventArgs) Handles Button2.Click
-        ' Capture the selected area
-        If overlayForm IsNot Nothing Then
-            Dim test = overlayForm.CaptureImage
-            Dim extractedText = TemplateMatching(test).Replace("-2", "2").Replace("=", "").Replace("?", "").Trim
-            Dim evaluatedResults As String = ProcessMathExpressions(extractedText)
-
-            TextBox1.Text = TextBox1.Text & Environment.NewLine &
-                            "Extracted Expression: " & extractedText & Environment.NewLine &
-                            "Evaluated Results: " & evaluatedResults
-            TextBox1.SelectionStart = TextBox1.Text.Length
-            TextBox1.ScrollToCaret()
-
-            TextBox2.Text = extractedText
+        If isRunning Then
+            isRunning = False
+            Button2.Text = "Capture"
         Else
-            MessageBox.Show("Click on Overlay")
+            isRunning = True
+            Button2.Text = "Stop"
+            loopThread = New System.Threading.Thread(AddressOf RunLoop)
+            loopThread.Start()
         End If
     End Sub
 
+    Private Sub Button3_Click(sender As Object, e As EventArgs) Handles Button3.Click
+        Dim customText = TextBox2.Text
+        Dim evaluatedResults As String = ProcessMathExpressions(customText)
+
+        TextBox1.Text = TextBox1.Text & Environment.NewLine &
+                        "Extracted Expression: " & customText & Environment.NewLine &
+                        "Evaluated Results: " & evaluatedResults
+        TextBox1.SelectionStart = TextBox1.Text.Length
+        TextBox1.ScrollToCaret()
+    End Sub
+
+    Private Sub ExitToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles ExitToolStripMenuItem.Click
+        Me.Close()
+    End Sub
+
+#End Region
+
+#Region "Sub/Functions"
     Private Function TemplateMatching(bitmapImage As Bitmap) As String
         ' Load the main image
         image = ToMat(bitmapImage)
@@ -261,58 +272,91 @@ Public Class Form1
         End Try
     End Function
 
-    Private Sub Button3_Click(sender As Object, e As EventArgs) Handles Button3.Click
-        Dim customText = TextBox2.Text
-        Dim evaluatedResults As String = ProcessMathExpressions(customText)
+    Public Function GetHolocureDimensions() As Boolean
+        windowHandle = FindWindow("YYGameMakerYY", "HoloCure")
 
-        TextBox1.Text = TextBox1.Text & Environment.NewLine &
-                        "Extracted Expression: " & customText & Environment.NewLine &
-                        "Evaluated Results: " & evaluatedResults
-        TextBox1.SelectionStart = TextBox1.Text.Length
-        TextBox1.ScrollToCaret()
-    End Sub
-
-    Private Sub Button4_Click(sender As Object, e As EventArgs) Handles Button4.Click
-        Dim pathToFile As String = Application.StartupPath & "templates\test data\"
-        TestExtract(New Bitmap(pathToFile & "44 2.png"), "44 2", "((1 + 0) * (3 + 0)) * (55 - 44)")
-        TestExtract(New Bitmap(pathToFile & "44.png"), "44", "(3 * 44) / (2 + 10)")
-        TestExtract(New Bitmap(pathToFile & "33.png"), "33", "(6 + 33) / (96 - 93)")
-        TestExtract(New Bitmap(pathToFile & "77.png"), "77", "((52 - 47) * (3 + 0)) + (23 + 77)")
-        TestExtract(New Bitmap(pathToFile & "88.png"), "88", "((65 + 12) * (88 - 87)) + (35 + 0)")
-        TestExtract(New Bitmap(pathToFile & "00.png"), "00", "((100 - 69) * (27 - 26)) + (1 * 73)")
-    End Sub
-
-    Private Sub TestExtract(img As Bitmap, filename As String, expected As String)
-        Dim extractedText = TemplateMatching(img).Replace("-2", "2").Replace("=", "").Replace("?", "").Trim
-        Dim evaluatedResults As String = ProcessMathExpressions(extractedText)
-
-        Dim match = False
-        If expected.Trim = extractedText.Trim Then
-            match = True
+        If windowHandle <> IntPtr.Zero Then
+            ' Get the window's position and size
+            If GetWindowRect(windowHandle, windowRegions) Then
+                Return True
+            Else
+                Return False
+            End If
+        Else
+            Return False
         End If
+    End Function
 
-        TextBox1.Text = TextBox1.Text & Environment.NewLine &
-                        filename & Environment.NewLine &
-                        "Expected: " & expected & Environment.NewLine &
-                        "Extracted Expression: " & extractedText & Environment.NewLine &
-                        "Match: " & match & Environment.NewLine &
-                        "===================="
-        TextBox1.SelectionStart = TextBox1.Text.Length
-        TextBox1.ScrollToCaret()
-    End Sub
+    Public Function CaptureWindow() As Bitmap
+        Dim screenCapture As New Bitmap(windowRegions.Width, 40)
+        Using g As Graphics = Graphics.FromImage(screenCapture)
+            g.CopyFromScreen(windowRegions.Left + 296, windowRegions.Top + 117, 0, 0, New Size(windowRegions.Width - 670, 40))
+        End Using
+        Return screenCapture
+    End Function
 
-    Private Sub ExitToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles ExitToolStripMenuItem.Click
-        Me.Close()
-    End Sub
+    Private Sub RunLoop()
+        Dim prevExtract As String = ""
+        While isRunning
+            Me.Invoke(Sub()
+                          If GetHolocureDimensions() Then
+                              Dim captureImage = CaptureWindow()
+                              Dim extractedText = TemplateMatching(captureImage).Replace("-2", "2").Replace("=", "").Replace("?", "").Trim
+                              Dim evaluatedResults As String = ProcessMathExpressions(extractedText)
 
-    Private Sub HelpToolStripMenuItem_Click(sender As Object, e As EventArgs) Handles HelpToolStripMenuItem.Click
-        MessageBox.Show("Press overlay button to move or resize the overlay" & Environment.NewLine &
-                        "arrow keys to move" & Environment.NewLine &
-                        "+ and - to adjust height" & Environment.NewLine &
-                        "[ and ] to adjust width" & Environment.NewLine &
-                        "Press capture to extract and calculate" & Environment.NewLine & Environment.NewLine &
-                        "Calc for incase the extracted expression is incorrect" & Environment.NewLine &
-                        "You can manually input the expression in the textbox besides it" & Environment.NewLine,
-                        "Help", MessageBoxButtons.OK, MessageBoxIcon.Information)
+                              TextBox1.Text = "Extracted Expression: " & extractedText & Environment.NewLine &
+                                              "Evaluated Results: " & evaluatedResults
+                              TextBox1.SelectionStart = TextBox1.Text.Length
+                              TextBox1.ScrollToCaret()
+
+                              If prevExtract <> extractedText Then
+                                  TextBox2.Text = extractedText
+                              End If
+                          Else
+                              isRunning = False
+                              MessageBox.Show("Holocure is minimized or closed")
+                          End If
+                      End Sub)
+
+            System.Threading.Thread.Sleep(800)
+        End While
+
+        Me.Invoke(Sub() TextBox1.Text = "Stopped")
     End Sub
+#End Region
+
+#Region "WinAPI"
+    ' Struct to store window's position and size
+    Public Structure RECT
+        Public Left As Integer
+        Public Top As Integer
+        Public Right As Integer
+        Public Bottom As Integer
+
+        ' Calculate Width and Height
+        Public ReadOnly Property Width As Integer
+            Get
+                Return Right - Left
+            End Get
+        End Property
+
+        Public ReadOnly Property Height As Integer
+            Get
+                Return Bottom - Top
+            End Get
+        End Property
+    End Structure
+
+    ' API declaration for GetWindowRect
+    <DllImport("user32.dll", SetLastError:=True)>
+    Public Shared Function GetWindowRect(ByVal hwnd As IntPtr, ByRef lpRect As RECT) As Boolean
+    End Function
+
+    ' API declaration for FindWindow
+    <DllImport("user32.dll", SetLastError:=True)>
+    Public Shared Function FindWindow(ByVal lpClassName As String, ByVal lpWindowName As String) As IntPtr
+    End Function
+#End Region
+
+
 End Class
