@@ -3,6 +3,8 @@ Imports Emgu.CV.CvEnum
 Imports Emgu.CV.BitmapExtension
 Imports Emgu.CV.Structure
 Imports System.Runtime.InteropServices
+Imports System.Drawing.Imaging
+Imports System.ComponentModel
 
 Public Class Form1
 
@@ -12,7 +14,7 @@ Public Class Form1
     Private windowRegions As RECT
     Private windowHandle As IntPtr
     Private isRunning As Boolean = False
-    Private loopThread As System.Threading.Thread
+    Private loopThread As Threading.Thread
 #End Region
 
 #Region "Form Events"
@@ -51,6 +53,9 @@ Public Class Form1
         Me.Close()
     End Sub
 
+    Private Sub Form1_Closing(sender As Object, e As CancelEventArgs) Handles Me.Closing
+        isRunning = False
+    End Sub
 #End Region
 
 #Region "Sub/Functions"
@@ -61,7 +66,8 @@ Public Class Form1
         ' Convert image to grayscale
         Dim grayImage As Mat = New Mat()
         CvInvoke.CvtColor(image, grayImage, ColorConversion.Bgr2Gray)
-        CvInvoke.Threshold(image, image, 127, 255, ThresholdType.Binary)
+        CvInvoke.Threshold(grayImage, grayImage, 127, 255, ThresholdType.Binary)
+        'grayImage.Save(Application.StartupPath & "test.png") 'debug
 
         Dim path_to_file = Application.StartupPath & "templates\"
 
@@ -81,6 +87,7 @@ Public Class Form1
         templates.Add("/", CvInvoke.Imread($"{path_to_file}divide.png", ImreadModes.Grayscale))
         templates.Add("*", CvInvoke.Imread($"{path_to_file}multiply.png", ImreadModes.Grayscale))
         templates.Add("(", CvInvoke.Imread($"{path_to_file}openp.png", ImreadModes.Grayscale))
+        templates.Add("(a", CvInvoke.Imread($"{path_to_file}openp2.png", ImreadModes.Grayscale))
         templates.Add("+", CvInvoke.Imread($"{path_to_file}plus.png", ImreadModes.Grayscale))
         templates.Add("?", CvInvoke.Imread($"{path_to_file}question.png", ImreadModes.Grayscale))
         templates.Add("=", CvInvoke.Imread($"{path_to_file}equals.png", ImreadModes.Grayscale))
@@ -241,8 +248,8 @@ Public Class Form1
         Dim results As New List(Of String)()
 
         For Each expression In mathExpressions
-            ' Clean up the expression (remove extra spaces, replace 'x' with '*')
-            expression = expression.Trim().Replace("x", "*")
+            ' Clean up the expression
+            expression = expression.Trim()
 
             ' Evaluate the math expression
             Try
@@ -287,42 +294,52 @@ Public Class Form1
     End Function
 
     Public Function CaptureWindow() As Bitmap
-        Dim screenCapture As New Bitmap(windowRegions.Width, 40)
+        Dim screenCapture As New Bitmap(windowRegions.Width - 550, 40)
         Using g As Graphics = Graphics.FromImage(screenCapture)
-            g.CopyFromScreen(windowRegions.Left + 296, windowRegions.Top + 117, 0, 0, New Size(windowRegions.Width - 670, 40))
+            g.CopyFromScreen(windowRegions.Left + 260, windowRegions.Top + 125, 0, 0, New Size(windowRegions.Width - 550, 40))
         End Using
+        'screenCapture.Save("test.png", ImageFormat.Png) 'debug
         Return screenCapture
     End Function
 
     Private Sub RunLoop()
         Dim prevExtract As String = ""
         While isRunning
-            Me.Invoke(Sub()
-                          If GetHolocureDimensions() Then
-                              Dim captureImage = CaptureWindow()
-                              Dim extractedText = TemplateMatching(captureImage).Replace("-2", "2").Replace("=", "").Replace("?", "").Trim
-                              Dim evaluatedResults As String = ProcessMathExpressions(extractedText)
+            If Not Me.IsDisposed Then
+                Invoke(Sub()
+                           If GetHolocureDimensions() Then
+                               Dim captureImage = CaptureWindow()
+                               Dim extractedText = TemplateMatching(captureImage) _
+                                                    .Replace("-2", "2") _
+                                                    .Replace("-/", "/") _
+                                                    .Replace("(a", "(") _
+                                                    .Replace("=", "") _
+                                                    .Replace("?", "").Trim
+                               Dim evaluatedResults As String = ProcessMathExpressions(extractedText)
 
-                              TextBox1.Text = "Extracted Expression: " & extractedText & Environment.NewLine &
-                                              "Evaluated Results: " & evaluatedResults
-                              TextBox1.SelectionStart = TextBox1.Text.Length
-                              TextBox1.ScrollToCaret()
+                               TextBox1.Text = "Extracted Expression: " & extractedText & Environment.NewLine &
+                                                  "Evaluated Results: " & evaluatedResults
+                               TextBox1.SelectionStart = TextBox1.Text.Length
+                               TextBox1.ScrollToCaret()
 
-                              If prevExtract <> extractedText Then
-                                  prevExtract = extractedText
-                                  TextBox2.Text = extractedText
-                              End If
-                          Else
-                              isRunning = False
-                              Button2.Text = "Capture"
-                              MessageBox.Show("Holocure is minimized or closed")
-                          End If
-                      End Sub)
+                               If prevExtract <> extractedText Then
+                                   prevExtract = extractedText
+                                   TextBox2.Text = extractedText
+                               End If
+                           Else
+                               isRunning = False
+                               Button2.Text = "Capture"
+                               MessageBox.Show("Holocure is minimized or closed")
+                           End If
+                       End Sub)
+            End If
 
-            System.Threading.Thread.Sleep(800)
+            Threading.Thread.Sleep(800)
         End While
 
-        Me.Invoke(Sub() TextBox1.Text = "Stopped")
+        If Not Me.IsDisposed Then
+            Invoke(Sub() TextBox1.Text = "Stopped")
+        End If
     End Sub
 #End Region
 
@@ -358,6 +375,5 @@ Public Class Form1
     Public Shared Function FindWindow(ByVal lpClassName As String, ByVal lpWindowName As String) As IntPtr
     End Function
 #End Region
-
 
 End Class
